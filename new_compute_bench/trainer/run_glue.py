@@ -396,6 +396,33 @@ def main():
         trust_remote_code=model_args.trust_remote_code,
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
+    # import sys
+    from pathlib import Path
+    sys.path.append(Path(__file__).resolve().parents[2].as_posix())
+    from acxsearch.cim import vit_module_level_add_noise
+    quan_config = {
+        "by": "type",
+        "conv2d": {
+            "config": {
+                "num_bits": 8,
+                "noise_magnitude": 0.2,
+            },
+        },
+        "linear": {
+            "config": {
+                "num_bits": 8,
+                "noise_magnitude": 0.2,
+            }
+        },
+        "relu": {
+            "config": {
+                "num_bits": 3,
+            }
+            },
+    }
+
+    # breakpoint()
+    model = vit_module_level_add_noise(model, quan_config)
 
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
