@@ -47,3 +47,13 @@ def set_logging_verbosity(level: str = "info"):
 
 def get_logger(name: str):
     return root_logger.getChild(name)
+
+def set_excepthook():
+    import sys, pdb, traceback
+
+    def excepthook(exc_type, exc_value, exc_traceback):
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
+        print("\nEntering debugger...")
+        pdb.post_mortem(exc_traceback)
+
+    sys.excepthook = excepthook
