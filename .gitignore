@@ -1,4 +1,8 @@
 wandb/
 /ckpt
 __pycache__/
+data/
+dataset/
+models/
+checkpoints/
 .*

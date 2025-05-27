@@ -251,7 +251,6 @@ def _digital_mm_core(x: Tensor, weight: Tensor, config: dict):
     else:
         raise ValueError(f"Invalid x_quant_type: {x_quant_type}")
 
-    
     weight = weight.transpose(-1, -2) # the rescale dimension should be in the -2 dimension 
     if weight_quant_type == "e4m3":
         weight = _runtime_rescale(weight, 4, 3, config.get("rescale_dim", "vector"))
