@@ -43,6 +43,7 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
+import yaml
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
@@ -211,11 +212,23 @@ def parse_args():
         default=None,
         help=("Where do you want to store the datasets downloaded from huggingface.co"),
     )
+    # parser.add_argument(
+    #     "--model_cache_dir",
+    #     type=str,
+    #     default=None,
+    #     help=("Where do you want to store the model downloaded from huggingface.co"),
+    # )
     parser.add_argument(
-        "--cache_dir",
+        "--cim",
+        type=bool,
+        default=False,
+        help="Whether to use CIM evaluation.",
+    )
+    parser.add_argument(
+        "--cim_config_path",
         type=str,
         default=None,
-        help=("Where do you want to store the model downloaded from huggingface.co"),
+        help=("Path to the CIM configuration file."),
     )
     args = parser.parse_args()
 
@@ -303,11 +316,10 @@ def main():
         args.model_name_or_path,
         num_labels=num_labels,
         finetuning_task=args.task_name,
-        cache_dir=args.cache_dir,
         trust_remote_code=args.trust_remote_code,
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        args.model_name_or_path, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code, cache_dir=args.cache_dir,
+        args.model_name_or_path, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code,
     )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -318,33 +330,16 @@ def main():
         config=config,
         ignore_mismatched_sizes=args.ignore_mismatched_sizes,
         trust_remote_code=args.trust_remote_code,
-        cache_dir=args.cache_dir,
     )
     # ===========================================================
     # =================== CIM Transformation ===================
     # ===========================================================
     import sys
     sys.path.append("/home/cx922/AICrossSim/acxsearch")
-    from cim.module_level_transform import vit_module_level_add_noise
-    if args.cim_eval: 
-        model = vit_module_level_add_noise(model, q_config = {
-            "by": "type",
-            "conv2d": {
-                "config": {
-                    "num_bits": 8,
-                    "noise_magnitude": 0.2,
-                    "programming_noise": True,
-                    "read_noise": True,
-                },
-            },
-            "linear": {
-                "config": {
-                    "num_bits": 8,
-                    "programming_noise": True,
-                    "read_noise": True,
-                },
-            },
-        })
+    from cim import module_level_transform
+    if args.cim: 
+        q_config = yaml.load(open(args.cim_config_path, 'r'), Loader=yaml.FullLoader)
+        model = module_level_transform(model, q_config)
     # ===========================================================
     # =================== CIM Transformation ===================
     # ===========================================================

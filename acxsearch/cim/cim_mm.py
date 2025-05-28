@@ -309,10 +309,9 @@ def _digital_mm(x: Tensor, weight: Tensor, config: dict):
         weight_shape = weight.shape
     assert (x_shape[-1] % vector_size == 0) and (weight.shape[0] % vector_size == 0), f"x.shape[-1] = {x_shape[-1]} and weight.shape[0] = {weight.shape[0]} must be divisible by vector_size = {vector_size}"
 
-    x = x.reshape(-1, x_shape[-1]//vector_size, vector_size)
-    px = x.permute(1, 0, 2)
-    weight = weight.reshape(vector_size, weight_shape[0]//vector_size, weight_shape[1])
-    pw = weight.permute(1, 0, 2)
+    px = x.reshape(-1, x_shape[-1]//vector_size, vector_size)
+    px = px.permute(1, 0, 2)
+    pw = weight.reshape(weight_shape[0]//vector_size, vector_size, weight_shape[1])
 
     out = _digital_mm_core(px, pw, config)
 
