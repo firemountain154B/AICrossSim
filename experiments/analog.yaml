@@ -1,0 +1,15 @@
+by: "type"
+conv2d:
+  config:
+    digital_mm: false
+    num_bits: 8
+    noise_magnitude: 0.2
+    programming_noise: true
+    read_noise: true
+
+linear:
+  config:
+    digital_mm: false
+    num_bits: 8
+    programming_noise: true
+    read_noise: true

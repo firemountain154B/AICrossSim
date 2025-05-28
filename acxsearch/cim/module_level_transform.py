@@ -3,6 +3,7 @@ from chop.tools import get_logger, set_logging_verbosity
 
 # from .layer_utils import LinearNoise, Conv2dNoise, ReLUNoise
 from .cim_layer import CIMLinear, CIMConv2d
+from chop.utils import deepsetattr
 import torch
 
 
@@ -46,8 +47,7 @@ def parse_q_config(module, q_config):
         raise ValueError(f"Invalid q_config: {q_config}")
 
 
-def vit_module_level_add_noise(model, q_config = {}):
-    from chop.utils import deepsetattr
+def module_level_transform(model, q_config = {}):
     for module in model.named_modules():
         config = parse_q_config(module, q_config)
         if config is None:

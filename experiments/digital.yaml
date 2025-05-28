@@ -1,0 +1,16 @@
+by: "type"
+conv2d:
+  config:
+    digital_mm: true
+    vector_size: 16
+    rescale_dim: "vector"
+    # x_quant_type: "e8m7"
+    # weight_quant_type: "e8m7"
+
+linear:
+  config:
+    digital_mm: true
+    vector_size: 16
+    rescale_dim: "vector"
+    # x_quant_type: "e8m7"
+    # weight_quant_type: "e8m7"

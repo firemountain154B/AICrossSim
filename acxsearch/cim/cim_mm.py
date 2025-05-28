@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from quant import scale_integer_quantizer
+from .quant import scale_integer_quantizer
 import sys
 sys.path.append("/home/cx922/AICrossSim/acxsearch")
+from .utils import _get_similarity
 
 from chop.tools import get_logger, set_logging_verbosity
 
@@ -97,8 +98,6 @@ def pcm_mm_core(analog_x, analog_weight, config):
     # Assume the gmax is 5us(the result is from the original paper)
 
     if config.get("reram_programming_noise", False):
-        
-        
         reram_weight_magnitude = config.get("reram_weight_magnitude", 0.10)
         analog_weight = reram_programming_noise(analog_weight, reram_weight_magnitude)
     
@@ -202,7 +201,7 @@ def _runtime_rescale(
     if rescale_dim == "element":
         max_exponent = torch.log2(x).ceil()
     elif rescale_dim == "vector":
-        max_exponent = x.max(dim=-1, keepdim=True).values.log2().ceil()
+        max_exponent = (torch.abs(x) + 1e-8).max(dim=-1, keepdim=True).values.log2().ceil()
     else:
         raise ValueError(f"Invalid rescale_dim: {rescale_dim}")
     
@@ -239,37 +238,39 @@ def _digital_mm_core(x: Tensor, weight: Tensor, config: dict):
     
 
     if x_quant_type == "e4m3":
-        x = _runtime_rescale(x, 4, 3, config.get("rescale_dim", "vector"))
+        qx = _runtime_rescale(x, 4, 3, config.get("rescale_dim", "vector"))
     elif x_quant_type == "e5m2":
-        x = _runtime_rescale(x, 5, 2, config.get("rescale_dim", "vector"))
+        qx = _runtime_rescale(x, 5, 2, config.get("rescale_dim", "vector"))
     elif x_quant_type == "e8m7":
-        x = _runtime_rescale(x, 8, 7, config.get("rescale_dim", "vector"))
+        qx = _runtime_rescale(x, 8, 7, config.get("rescale_dim", "vector"))
     elif x_quant_type == "int4":
-        x = scale_integer_quantizer(x, 4, True, 1.0)
+        qx = scale_integer_quantizer(x, 4, True, 1.0)
     elif x_quant_type == "int8":
-        x = scale_integer_quantizer(x, 8, True, 1.0)
+        qx = scale_integer_quantizer(x, 8, True, 1.0)
     else:
-        raise ValueError(f"Invalid x_quant_type: {x_quant_type}")
+        qx = x
 
     weight = weight.transpose(-1, -2) # the rescale dimension should be in the -2 dimension 
     if weight_quant_type == "e4m3":
-        weight = _runtime_rescale(weight, 4, 3, config.get("rescale_dim", "vector"))
+        qweight = _runtime_rescale(weight, 4, 3, config.get("rescale_dim", "vector"))
     elif weight_quant_type == "e5m2":
-        weight = _runtime_rescale(weight, 5, 2, config.get("rescale_dim", "vector"))
+        qweight = _runtime_rescale(weight, 5, 2, config.get("rescale_dim", "vector"))
     elif weight_quant_type == "e8m7":
-        weight = _runtime_rescale(weight, 8, 7, config.get("rescale_dim", "vector"))
+        qweight = _runtime_rescale(weight, 8, 7, config.get("rescale_dim", "vector"))
     elif weight_quant_type == "int4":
-        weight = scale_integer_quantizer(weight, 4, True, 1.0)
+        qweight = scale_integer_quantizer(weight, 4, True, 1.0)
     elif weight_quant_type == "int8":
-        weight = scale_integer_quantizer(weight, 8, True, 1.0)
+        qweight = scale_integer_quantizer(weight, 8, True, 1.0)
     else:
-        raise ValueError(f"Invalid weight_quant_type: {weight_quant_type}")
+        qweight = weight
 
-    weight = weight.transpose(-1, -2) # permute back
+    # similarity = _get_similarity(qx, x, metric="cosine")
+
+    qweight = qweight.transpose(-1, -2) # permute back
     if config.get("approximate_mode", False):
         raise NotImplementedError("Approximate mode is not implemented")
     else:
-        return x @ weight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
+        return qx @ qweight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
 
 
 def _digital_mm(x: Tensor, weight: Tensor, config: dict):
@@ -289,10 +290,27 @@ def _digital_mm(x: Tensor, weight: Tensor, config: dict):
     x_shape = x.shape
     weight_shape = weight.shape
     vector_size = config.get("vector_size", 1)
-    assert (x_shape[-1] % vector_size == 0) and (weight.shape[0] % vector_size == 0), "x.shape[-1] and weight.shape[1] must be divisible by vector_size"
+    
+    # Pad x if not divisible by vector_size
+    if x_shape[-1] % vector_size != 0:
+        padding_size = vector_size - (x_shape[-1] % vector_size)
+        padding_shape = list(x_shape)
+        padding_shape[-1] = padding_size
+        padding = torch.zeros(padding_shape, dtype=x.dtype, device=x.device)
+        x = torch.cat([x, padding], dim=-1)
+        x_shape = x.shape
+    
+    # Pad weight if not divisible by vector_size
+    if weight_shape[0] % vector_size != 0:
+        padding_size = vector_size - (weight_shape[0] % vector_size)
+        padding_shape = [padding_size] + list(weight_shape[1:])
+        padding = torch.zeros(padding_shape, dtype=weight.dtype, device=weight.device)
+        weight = torch.cat([weight, padding], dim=0)
+        weight_shape = weight.shape
+    assert (x_shape[-1] % vector_size == 0) and (weight.shape[0] % vector_size == 0), f"x.shape[-1] = {x_shape[-1]} and weight.shape[0] = {weight.shape[0]} must be divisible by vector_size = {vector_size}"
 
     x = x.reshape(-1, x_shape[-1]//vector_size, vector_size)
-    px = x.permute(2, 0, 1)
+    px = x.permute(1, 0, 2)
     weight = weight.reshape(vector_size, weight_shape[0]//vector_size, weight_shape[1])
     pw = weight.permute(1, 0, 2)
 
@@ -307,14 +325,17 @@ class DigitalMM(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, weight, config):
         ctx.save_for_backward(x, weight)
+        ctx.config = config
         result = _digital_mm(x, weight, config)
         return result
     
     @staticmethod
     def backward(ctx, grad_output):
         x, weight = ctx.saved_tensors
-        grad_input = _digital_mm(grad_output, weight.t())
-        grad_weight = _digital_mm(x.transpose(-2, -1), grad_output)
+        grad_input = grad_output @ weight.t()
+        grad_weight = x.transpose(-2, -1) @ grad_output
+        # grad_input = _digital_mm(grad_output, weight.t(), ctx.config)
+        # grad_weight = _digital_mm(x.transpose(-2, -1), grad_output, ctx.config)
         return grad_input, grad_weight, None
     
 def cim_mm(x, weight, config):
