@@ -3,8 +3,9 @@ import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data.distributed import DistributedSampler
 import os
+import sys
 
-DATASET_PATH = "/data/datasets/"
+DATASET_PATH = os.getenv('DATASET_PATH')
 
 transform_train=transforms.Compose([
     transforms.RandomCrop(32, padding=4),

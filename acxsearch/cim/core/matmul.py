@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from .simulation_tile import DigitalTile, ReRAMTile, PCMTile
+from .simulation_tile import sram_tile, reram_tile, pcm_tile
 
 from ano.tools import get_logger, set_logging_verbosity
 logger = get_logger(__name__)
@@ -10,21 +10,13 @@ set_logging_verbosity("debug")
 # ToDo: ADD Drift Noise
 # ToDo: add scaling factor, from weight to gt
 
-def digital_tile(x: Tensor, weight: Tensor, config: dict):
-    return DigitalTile.apply(x, weight, config)
-
-def reram_tile(x: Tensor, weight: Tensor, config: dict):
-    return ReRAMTile.apply(x, weight, config)
-
-def pcm_tile(x: Tensor, weight: Tensor, config: dict):
-    return PCMTile.apply(x, weight, config)
 
 def mm_tile(x: Tensor, weight: Tensor, config: dict):
-    return x @ weight.t()
+    return x @ weight
 
 def cim_tile(x, weight, config):
     if config.get("tile_type") == "digital":
-        return digital_tile(x, weight, config)
+        return sram_tile(x, weight, config)
     elif config.get("tile_type") == "reram":
         return reram_tile(x, weight, config)
     elif config.get("tile_type") == "pcm":
@@ -78,4 +70,20 @@ def cim_mm(x: Tensor, weight: Tensor, config: dict):
     out = out.reshape(x_shape[0:-1] + torch.Size([weight_shape[1]]))
 
     return out
+
+class CIMCore(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, weight, config):
+        ctx.save_for_backward(x, weight)
+        ctx.config = config
+        return cim_mm(x, weight, config)
     
+    @staticmethod
+    def backward(ctx, grad_output):
+        x, weight = ctx.saved_tensors
+        grad_input = grad_output @ weight.t()
+        grad_weight = x.t() @ grad_output
+        return grad_input, grad_weight, None
+
+def cim_core(x, weight, config):
+    return CIMCore.apply(x, weight, config)

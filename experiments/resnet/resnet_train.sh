@@ -12,10 +12,11 @@ export CACHE_DIR="${PROJECT_HOME}/.cache"
 export PYTHONPATH="${PROJECT_HOME}/acxsearch/:$PYTHONPATH"
 
 cd ${PROJECT_HOME}
-
 pwd
 
-CUDA_VISIBLE_DEVICES=0,1 python3 acxsearch/resnet_eval/main.py \
+CUDA_VISIBLE_DEVICES=0,1 \
+DATASET_PATH=${DATASETS_PATH} \
+python3 acxsearch/resnet_eval/main.py \
     --mode train \
     --save_path ${DATA_HOME}/AICrossSim/resnet_eval/model_original \
     --epochs 300 \

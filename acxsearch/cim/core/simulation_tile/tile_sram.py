@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from quantization import scale_integer_quantizer
+from .quantization import scale_integer_quantizer
 from ano.tools import get_logger
 
 logger = get_logger(__name__)
@@ -49,7 +49,7 @@ def approximate_mode(x: Tensor, weight: Tensor):
 
     return output
 
-def _digital_mm_core(x: Tensor, weight: Tensor, config: dict):
+def sram_tile(x: Tensor, weight: Tensor, config: dict):
     '''
     There is two mode to conducting the digital mm, 
     For the first accurate mode, 
@@ -101,18 +101,18 @@ def _digital_mm_core(x: Tensor, weight: Tensor, config: dict):
         return qx @ qweight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
 
     
-class DigitalTile(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, weight, config):
-        ctx.save_for_backward(x, weight)
-        return _digital_mm_core(x, weight, config)
+# class DigitalTile(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, x, weight, config):
+#         ctx.save_for_backward(x, weight)
+#         return _digital_mm_core(x, weight, config)
     
-    @staticmethod
-    def backward(ctx, grad_output):
-        x, weight = ctx.saved_tensors
-        grad_input = grad_output @ weight.t()
-        grad_weight = x.transpose(-2, -1) @ grad_output
-        # grad_input = _digital_mm_core(grad_output, weight.t(), ctx.config)
-        # grad_weight = _digital_mm_core(x.transpose(-2, -1), grad_output, ctx.config)
-        return grad_input, grad_weight, None
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         x, weight = ctx.saved_tensors
+#         grad_input = grad_output @ weight.transpose(-1, -2)
+#         grad_weight = x.transpose(-2, -1) @ grad_output
+#         # grad_input = _digital_mm_core(grad_output, weight.t(), ctx.config)
+#         # grad_weight = _digital_mm_core(x.transpose(-2, -1), grad_output, ctx.config)
+#         return grad_input, grad_weight, None
     

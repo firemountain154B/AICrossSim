@@ -1,3 +1,3 @@
-from .tile_sram import DigitalTile
-from .tile_reram import ReRAMTile
-from .tile_pcm import PCMTile
+from .tile_sram import sram_tile
+from .tile_reram import reram_tile
+from .tile_pcm import pcm_tile

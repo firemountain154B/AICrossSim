@@ -1,9 +1,9 @@
 import torch.nn as nn
-from chop.tools import get_logger, set_logging_verbosity
+from ano.tools import get_logger, set_logging_verbosity
 
 # from .layer_utils import LinearNoise, Conv2dNoise, ReLUNoise
 from .cim_layer import CIMLinear, CIMConv2d
-from chop.utils import deepsetattr
+from ano.utils import deepsetattr
 import torch
 
 

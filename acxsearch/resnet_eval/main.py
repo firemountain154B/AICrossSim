@@ -13,15 +13,16 @@ from datasets import get_train_data_loader,get_test_data_loader,get_distributed_
 from tqdm import tqdm
 import os
 import sys
-sys.path.append('/home/cx922/AICrossSim/acxsearch/')
-print(sys.path)
+
 from cim import module_level_transform
 import yaml
 
-#Preseting parmaters
+from ano.tools import get_logger
+logger = get_logger(__name__)
 
 TRAINSET_LENGTH=50000
 TESTSET_LENGTH=10000
+
 #Hyperparmeters:
 device= 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -101,8 +102,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def test(network, testloader, rank=None):
+def test(args, network, rank=None):
+    testloader = get_test_data_loader(batch_size=args.batch_size)
     network.eval()
+    network.to(device)
     total_correct = 0
     total_loss = 0
     total_samples = 0
@@ -346,6 +349,7 @@ if __name__=='__main__':
     if args.mode == "train":
         train(args, create_network(args))
     elif args.mode == "test":
-        test(args, create_network(args))
+        loss, acc = test(args, create_network(args))
+        logger.info(f"Test Loss: {loss}, Test Acc: {acc}")
     elif args.mode == "finetune":
         finetune(args, create_network(args))

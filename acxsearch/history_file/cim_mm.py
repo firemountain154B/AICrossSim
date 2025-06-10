@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-from ..quant import scale_integer_quantizer
+from ..cim.quant import scale_integer_quantizer
 import sys
 sys.path.append("/home/cx922/AICrossSim/acxsearch")
 

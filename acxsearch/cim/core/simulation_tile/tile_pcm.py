@@ -82,7 +82,7 @@ def pcm_mm_core(analog_x, analog_weight, config):
 
     return result
 
-def pcm_mm(x, weight, config):
+def pcm_tile(x, weight, config):
     """
     Implements noisy matrix multiplication for PCM-based computation.
 
@@ -122,16 +122,16 @@ def pcm_mm(x, weight, config):
 
     return result
 
-class PCMTile(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x, weight, config):
-        ctx.save_for_backward(x, weight)
-        ctx.config = config
-        return pcm_mm(x, weight, config)
+# class PCMTile(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, x, weight, config):
+#         ctx.save_for_backward(x, weight)
+#         ctx.config = config
+#         return pcm_mm(x, weight, config)
     
-    @staticmethod
-    def backward(ctx, grad_output):
-        x, weight = ctx.saved_tensors
-        grad_input = grad_output @ weight.t()
-        grad_weight = x.transpose(-2, -1) @ grad_output
-        return grad_input, grad_weight, None
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         x, weight = ctx.saved_tensors
+#         grad_input = grad_output @ weight.t()
+#         grad_weight = x.transpose(-2, -1) @ grad_output
+#         return grad_input, grad_weight, None
