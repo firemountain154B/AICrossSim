@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .cim_mm import cim_mm
+from .core.cim_mm import cim_mm
 
 class CIMLinear(nn.Linear):
     """

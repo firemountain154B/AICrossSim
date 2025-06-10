@@ -14,6 +14,7 @@ from tqdm import tqdm
 import os
 import sys
 sys.path.append('/home/cx922/AICrossSim/acxsearch/')
+print(sys.path)
 from cim import module_level_transform
 import yaml
 
@@ -47,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--load_path",
         type=str,
-        default="/data/models/cx922/resnet_eval/model_original/model_best.pkl",
+        default=None,
         help="Path to the model file for testing or fine-tuning"
     )
     parser.add_argument(

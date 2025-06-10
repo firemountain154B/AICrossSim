@@ -1,9 +1,9 @@
 
 import torch, sys
-from cim.cim_mm import _digital_mm
+from AICrossSim.acxsearch.cim.core.cim_mm import _digital_mm
 from cim.utils import _get_similarity
 sys.path.append("/home/cx922/AICrossSim/acxsearch")
-from chop.tools import set_excepthook
+from ano.tools import set_excepthook
 set_excepthook()
 
 torch.manual_seed(0)

@@ -15,7 +15,7 @@ from torch.nn import functional as F
 
 logger = getLogger(__name__)
 
-from ..core.simulation_tile.utils import my_clamp, my_round
+from .utils import my_clamp, my_round
 
 def _scale_integer_quantize(
     x: Tensor | ndarray, width: int, is_signed: bool = True, quantile: float = 1.0

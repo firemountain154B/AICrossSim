@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .quant import scale_integer_quantizer
+from ...quant import scale_integer_quantizer
 
 class ReLUNoise(nn.ReLU):
     def __init__(self, q_config={}):
