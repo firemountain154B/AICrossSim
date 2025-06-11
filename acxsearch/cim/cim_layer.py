@@ -21,7 +21,6 @@ class CIMLinear(nn.Linear):
     def forward(self, input):
         # Apply noisy matrix multiplication using the custom autograd function
         output = cim_mm(input, self.weight.t(), self.q_config)
-        # output = input @ self.weight.t()
         
         # Add bias if provided
         if self.bias is not None:

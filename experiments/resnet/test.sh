@@ -1,4 +1,3 @@
-
 DATA_HOME="/data/cx922"
 PROJECT_HOME="/home/jianyicheng/cx922/AICrossSim"
 
@@ -17,15 +16,7 @@ export PYTHONPATH="${PROJECT_HOME}/acxsearch/:$PYTHONPATH"
 cd ${PROJECT_HOME}
 pwd
 
-CUDA_VISIBLE_DEVICES=0 \
+
+CUDA_VISIBLE_DEVICES=1 \
 DATASET_PATH=${DATASETS_PATH} \
-python3 acxsearch/resnet_eval/main.py \
-    --mode finetune \
-    --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
-    --save_path ${CHECKPOINT_PATH}/resnet_eval/model_finetuned/ \
-    --batch_size 256 \
-    --cim True \
-    --cim_config_path ${PROJECT_HOME}/experiments/original.yaml
-    # --cim_config_path ${PROJECT_HOME}/experiments/digital.yaml
-    # --distributed \
-    # --world_size 2
+python3 ${PROJECT_HOME}/acxsearch/test/cim/core/matmul.py

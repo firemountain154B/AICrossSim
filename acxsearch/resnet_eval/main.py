@@ -17,12 +17,14 @@ import sys
 from cim import module_level_transform
 import yaml
 
-from ano.tools import get_logger
+
+from ano.tools import set_excepthook, get_logger
+
+set_excepthook()
 logger = get_logger(__name__)
 
 TRAINSET_LENGTH=50000
 TESTSET_LENGTH=10000
-
 #Hyperparmeters:
 device= 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -102,8 +104,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def test(args, network, rank=None):
-    testloader = get_test_data_loader(batch_size=args.batch_size)
+def test(network, testloader, rank=None):
     network.eval()
     network.to(device)
     total_correct = 0
@@ -349,7 +350,8 @@ if __name__=='__main__':
     if args.mode == "train":
         train(args, create_network(args))
     elif args.mode == "test":
-        loss, acc = test(args, create_network(args))
+        testloader = get_test_data_loader(batch_size=args.batch_size)
+        loss, acc = test(create_network(args), testloader)
         logger.info(f"Test Loss: {loss}, Test Acc: {acc}")
     elif args.mode == "finetune":
         finetune(args, create_network(args))

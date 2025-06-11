@@ -16,13 +16,14 @@ def _runtime_rescale(
     The rescaling in side the digital mm
     """
 
-    if rescale_dim == "element":
-        max_exponent = torch.log2(x).ceil()
-    elif rescale_dim == "vector":
-        max_exponent = (torch.abs(x) + 1e-8).max(dim=-1, keepdim=True).values.log2().ceil()
-    else:
-        raise ValueError(f"Invalid rescale_dim: {rescale_dim}")
+    # if rescale_dim == "element":
+    #     max_exponent = torch.log2(x).ceil()
+    # elif rescale_dim == "vector":
+    #     max_exponent = (torch.abs(x) + 1e-8).max(dim=-1, keepdim=True).values.log2().ceil()
+    # else:
+    #     raise ValueError(f"Invalid rescale_dim: {rescale_dim}")
     
+    max_exponent = (torch.abs(x) + 1e-8).max(dim=-1, keepdim=True).values.log2().ceil()
     exponent_min = 0
     exponent_max = 2**exponent_bits - 1
     max_exponent = torch.clamp(max_exponent, exponent_min, exponent_max)
@@ -100,19 +101,4 @@ def sram_tile(x: Tensor, weight: Tensor, config: dict):
     else:
         return qx @ qweight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
 
-    
-# class DigitalTile(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, x, weight, config):
-#         ctx.save_for_backward(x, weight)
-#         return _digital_mm_core(x, weight, config)
-    
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         x, weight = ctx.saved_tensors
-#         grad_input = grad_output @ weight.transpose(-1, -2)
-#         grad_weight = x.transpose(-2, -1) @ grad_output
-#         # grad_input = _digital_mm_core(grad_output, weight.t(), ctx.config)
-#         # grad_weight = _digital_mm_core(x.transpose(-2, -1), grad_output, ctx.config)
-#         return grad_input, grad_weight, None
     

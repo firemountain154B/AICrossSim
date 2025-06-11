@@ -1,5 +1,6 @@
 import torch
 from torch import Tensor
+import torch.nn.functional as F
 
 from .simulation_tile import sram_tile, reram_tile, pcm_tile
 
@@ -21,8 +22,11 @@ def cim_tile(x, weight, config):
         return reram_tile(x, weight, config)
     elif config.get("tile_type") == "pcm":
         return pcm_tile(x, weight, config)
-    else:
+    elif config.get("tile_type") == "original":
         return mm_tile(x, weight, config)
+    else:
+        raise ValueError(f"Invalid tile type: {config.get('tile_type')}")
+    
 
 def cim_mm(x: Tensor, weight: Tensor, config: dict):
     '''
@@ -40,34 +44,49 @@ def cim_mm(x: Tensor, weight: Tensor, config: dict):
     '''
     x_shape = x.shape
     weight_shape = weight.shape
-    vector_size = config.get("vector_size", 1)
+
+    core_size = config.get("core_size", None)
+
+    if core_size is None:
+        return cim_tile(x, weight, config)
     
-    # Pad x if not divisible by vector_size
-    if x_shape[-1] % vector_size != 0:
-        padding_size = vector_size - (x_shape[-1] % vector_size)
-        padding_shape = list(x_shape)
-        padding_shape[-1] = padding_size
-        padding = torch.zeros(padding_shape, dtype=x.dtype, device=x.device)
-        x = torch.cat([x, padding], dim=-1)
-        x_shape = x.shape
+    # Pre-compute padding requirements
+    x_pad_size_0 = (core_size - (x_shape[-2] % core_size)) % core_size
+    x_pad_size_1 = (core_size - (x_shape[-1] % core_size)) % core_size
+
+    w_pad_size_0 = (core_size - (weight_shape[0] % core_size)) % core_size
+    w_pad_size_1 = (core_size - (weight_shape[1] % core_size)) % core_size
     
-    # Pad weight if not divisible by vector_size
-    if weight_shape[0] % vector_size != 0:
-        padding_size = vector_size - (weight_shape[0] % vector_size)
-        padding_shape = [padding_size] + list(weight_shape[1:])
-        padding = torch.zeros(padding_shape, dtype=weight.dtype, device=weight.device)
-        weight = torch.cat([weight, padding], dim=0)
-        weight_shape = weight.shape
-    assert (x_shape[-1] % vector_size == 0) and (weight.shape[0] % vector_size == 0), f"x.shape[-1] = {x_shape[-1]} and weight.shape[0] = {weight.shape[0]} must be divisible by vector_size = {vector_size}"
+    # Pad x if needed 
+    px = F.pad(x, (0, x_pad_size_1, 0, x_pad_size_0), 'constant', 0)
+    px_shape = px.shape
 
-    px = x.reshape(-1, x_shape[-1]//vector_size, vector_size)
-    px = px.permute(1, 0, 2)
-    pw = weight.reshape(weight_shape[0]//vector_size, vector_size, weight_shape[1])
+    pw = F.pad(weight, (0, w_pad_size_1, 0, w_pad_size_0), 'constant', 0)
+    pw_shape = pw.shape
 
-    out = cim_tile(px, pw, config)
+    # in order to follow the law of torch.mm
+    # px will be reshaped to (1, -1, core_size, px_row_depth, core_size)
+    # and be view as (1, -1, px_row_depth, core_size, core_size)
+    # pw will be reshaped to (px_row_depth, 1           , -1, core_size, core_size)
+    # and be view as         (pw_col_depth, pw_row_depth,  1,            core_size, core_size)
+    # the output will be                   (pw_row_depth, -1, core_size, core_size)
+    # the target shape will be (-1, px_col, pw_row)
+    # so then the output will be permute to (-1, core_size, core_size, pw_row_depth)
+    # so then the output will be reshaped to (-1, padding_px_row, padding_pw_col)
 
-    out = out.sum(dim=0)
-    out = out.reshape(x_shape[0:-1] + torch.Size([weight_shape[1]]))
+    # the output will be reshaped to (1, -1, pw_row_depth, core_size, core_size)
+    # and be view as (1, -1, pw_row_depth, core_size, core_size)
+
+    # the output will be summed to (1, -1, pw_row_depth, core_size, core_size)
+    px = px.view(1, -1, core_size, px_shape[-1]//core_size, core_size).permute(3, 0, 1, 2, 4)
+    pw = pw.view(1, pw_shape[0]//core_size, core_size, pw_shape[1]//core_size, core_size).permute(1, 3, 0, 2, 4)
+
+    pout = cim_tile(px, pw, config)
+    pout = pout.sum(dim=0).permute(1,2,0,3)
+
+    pout = pout.reshape(-1, px_shape[-2], pw_shape[-1])
+    out = pout[:, :x_shape[-2], :weight_shape[1]]
+    out = out.view(*x_shape[:-1],weight_shape[1])
 
     return out
 
@@ -87,3 +106,4 @@ class CIMCore(torch.autograd.Function):
 
 def cim_core(x, weight, config):
     return CIMCore.apply(x, weight, config)
+

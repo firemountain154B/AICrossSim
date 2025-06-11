@@ -23,6 +23,6 @@ python3 acxsearch/resnet_eval/main.py \
     --mode finetune \
     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
     --save_path ${CHECKPOINT_PATH}/resnet_eval/model_finetuned/ \
-    --batch_size 512 \
+    --batch_size 256 \
     --cim True \
     --cim_config_path ${PROJECT_HOME}/experiments/digital.yaml

@@ -25,7 +25,14 @@ def get_train_data_loader(batch_size):
     download=True,
     transform=transform_train    
     )
-    return torch.utils.data.DataLoader(train_set,batch_size=batch_size,shuffle=True)
+    return torch.utils.data.DataLoader(
+        train_set,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
 def get_test_data_loader(batch_size):
     test_set=torchvision.datasets.CIFAR10(
@@ -34,7 +41,14 @@ def get_test_data_loader(batch_size):
     download=True,
     transform=transform_test 
     )
-    return torch.utils.data.DataLoader(test_set,batch_size=batch_size,shuffle=True)
+    return torch.utils.data.DataLoader(
+        test_set,
+        batch_size=batch_size,
+        shuffle=False,  # No need to shuffle test set
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
 def get_mean_and_std(dataset):
     dataloader=torch.utils.data.DataLoader(dataset,batch_size=1,shuffle=True)

@@ -12,17 +12,3 @@ def reram_tile(x, weight, config):
     )
     weight = weight + torch.randn_like(weight) * config.get("weight_noise", 0.0)
     return x @ weight
-
-# class ReRAMTile(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, x, weight, config):
-#         ctx.save_for_backward(x, weight)
-#         ctx.config = config
-#         return reram_mm(x, weight, config)
-    
-#     @staticmethod
-#     def backward(ctx, grad_output):
-#         x, weight = ctx.saved_tensors
-#         grad_input = grad_output @ weight.t()
-#         grad_weight = x.transpose(-2, -1) @ grad_output
-#         return grad_input, grad_weight, None

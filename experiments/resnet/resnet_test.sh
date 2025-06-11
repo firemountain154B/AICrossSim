@@ -16,9 +16,36 @@ export PYTHONPATH="${PROJECT_HOME}/acxsearch/:$PYTHONPATH"
 cd ${PROJECT_HOME}
 pwd
 
-CUDA_VISIBLE_DEVICES=0 \
+# CUDA_VISIBLE_DEVICES=1 \
+# DATASET_PATH=${DATASETS_PATH} \
+# python3 acxsearch/resnet_eval/main.py \
+#     --mode test \
+#     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+#     --batch_size 256
+
+# CUDA_VISIBLE_DEVICES=1 \
+# DATASET_PATH=${DATASETS_PATH} \
+# python3 acxsearch/resnet_eval/main.py \
+#     --mode test \
+#     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+#     # --cim True \
+#     # --cim_config_path ${PROJECT_HOME}/experiments/digital.yaml \
+#     --batch_size 256
+
+CUDA_VISIBLE_DEVICES=1 \
 DATASET_PATH=${DATASETS_PATH} \
 python3 acxsearch/resnet_eval/main.py \
     --mode test \
-    --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+    --load_path ${CHECKPOINT_PATH}/resnet_eval/model_finetuned/model_finetuned.pkl \
+    --cim True \
+    --cim_config_path ${PROJECT_HOME}/experiments/sram.yaml \
     --batch_size 256
+
+# CUDA_VISIBLE_DEVICES=1 \
+# DATASET_PATH=${DATASETS_PATH} \
+# python3 acxsearch/resnet_eval/main.py \
+#     --mode test \
+#     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+#     --cim True \
+#     --cim_config_path ${PROJECT_HOME}/experiments/original.yaml \
+#     --batch_size 256
