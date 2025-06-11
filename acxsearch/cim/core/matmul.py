@@ -48,6 +48,7 @@ def cim_mm(x: Tensor, weight: Tensor, config: dict):
     core_size = config.get("core_size", None)
 
     if core_size is None:
+        logger.debug(f"No core size is provided, using the original mm")
         return cim_tile(x, weight, config)
     
     # Pre-compute padding requirements

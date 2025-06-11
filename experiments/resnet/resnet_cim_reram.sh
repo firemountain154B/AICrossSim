@@ -17,12 +17,12 @@ export PYTHONPATH="${PROJECT_HOME}/acxsearch/:$PYTHONPATH"
 cd ${PROJECT_HOME}
 pwd
 
-CUDA_VISIBLE_DEVICES=0 \
+CUDA_VISIBLE_DEVICES=6 \
 DATASET_PATH=${DATASETS_PATH} \
 python3 acxsearch/resnet_eval/main.py \
     --mode finetune \
     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
-    --save_path ${CHECKPOINT_PATH}/resnet_eval/model_finetuned/ \
+    --save_path ${CHECKPOINT_PATH}/resnet_eval/model_cim_reram/ \
     --batch_size 256 \
     --cim True \
-    --cim_config_path ${PROJECT_HOME}/experiments/digital.yaml
+    --cim_config_path ${PROJECT_HOME}/experiments/reram.yaml

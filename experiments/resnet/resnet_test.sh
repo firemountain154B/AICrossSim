@@ -32,13 +32,31 @@ pwd
 #     # --cim_config_path ${PROJECT_HOME}/experiments/digital.yaml \
 #     --batch_size 256
 
+# CUDA_VISIBLE_DEVICES=1 \
+# DATASET_PATH=${DATASETS_PATH} \
+# python3 acxsearch/resnet_eval/main.py \
+#     --mode test \
+#     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+#     --cim True \
+#     --cim_config_path ${PROJECT_HOME}/experiments/sram.yaml \
+#     --batch_size 256
+
+# CUDA_VISIBLE_DEVICES=1 \
+# DATASET_PATH=${DATASETS_PATH} \
+# python3 acxsearch/resnet_eval/main.py \
+#     --mode test \
+#     --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
+#     --cim True \
+#     --cim_config_path ${PROJECT_HOME}/experiments/reram.yaml \
+#     --batch_size 256
+
 CUDA_VISIBLE_DEVICES=1 \
 DATASET_PATH=${DATASETS_PATH} \
 python3 acxsearch/resnet_eval/main.py \
     --mode test \
-    --load_path ${CHECKPOINT_PATH}/resnet_eval/model_finetuned/model_finetuned.pkl \
+    --load_path ${CHECKPOINT_PATH}/resnet_eval/model_original/model_best.pkl \
     --cim True \
-    --cim_config_path ${PROJECT_HOME}/experiments/sram.yaml \
+    --cim_config_path ${PROJECT_HOME}/experiments/pcm.yaml \
     --batch_size 256
 
 # CUDA_VISIBLE_DEVICES=1 \

@@ -18,7 +18,7 @@ logger = getLogger(__name__)
 from .utils import my_clamp, my_round
 
 def _scale_integer_quantize(
-    x: Tensor | ndarray, width: int, is_signed: bool = True, quantile: float = 1.0
+    x: Tensor | ndarray, width: int, is_signed: bool = True, quantile: float = None
 ):
     """
     - Do linear quantization to input according to a scale and number of bits
@@ -38,7 +38,9 @@ def _scale_integer_quantize(
     """
     if quantile is None:
         quantile = 1.0
-    x_max = x.quantile(quantile)
+    x_max = x.abs().max(dim=-1, keepdim=True).values + 1e-9
+
+
     
     if is_signed:
         int_min = -(2 ** (width - 1))

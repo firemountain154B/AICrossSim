@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .core.matmul import cim_mm
+from .core.matmul import cim_core
 
 class CIMLinear(nn.Linear):
     """
@@ -20,7 +20,7 @@ class CIMLinear(nn.Linear):
             
     def forward(self, input):
         # Apply noisy matrix multiplication using the custom autograd function
-        output = cim_mm(input, self.weight.t(), self.q_config)
+        output = cim_core(input, self.weight.t(), self.q_config)
         
         # Add bias if provided
         if self.bias is not None:
@@ -52,7 +52,7 @@ class CIMConv2d(nn.Conv2d):
         patches = x_unfold.transpose(1, 2).contiguous()        # [B, L, C*kH*kW]
         patches = patches.view(-1, weight_flat.size(1))        # [B*L, C*kH*kW]
 
-        out_flat = cim_mm(patches, weight_flat.t(), self.q_config)  
+        out_flat = cim_core(patches, weight_flat.t(), self.q_config)  
         # -> [B*L, out_channels]
 
         # reshape back to [B, out_channels, L]

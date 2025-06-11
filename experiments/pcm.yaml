@@ -1,15 +1,16 @@
 by: "type"
 conv2d:
   config:
-    digital_mm: false
+    tile_type: "pcm"
+    core_size: 16
     num_bits: 8
-    noise_magnitude: 0.2
     programming_noise: true
     read_noise: true
 
 linear:
   config:
-    digital_mm: false
+    tile_type: "pcm"
+    core_size: 16
     num_bits: 8
     programming_noise: true
     read_noise: true

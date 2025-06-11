@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
-from .quantization import scale_integer_quantizer
+from .utils import my_clamp, my_round
+
 
 def programming_noise(weight):
     """
@@ -16,8 +17,12 @@ def programming_noise(weight):
     """
     # Calculate σ_prog using the quadratic equation
     sigma_prog = -1.1731 * weight**2 + 1.9650 * weight + 0.2635
+
     # Ensure σ_prog is non-negative
-    sigma_prog = torch.maximum(sigma_prog, torch.zeros_like(sigma_prog))
+    sigma_prog_shape = sigma_prog.shape
+    sigma_prog = sigma_prog.reshape(*sigma_prog_shape[:-2], -1)
+    sigma_prog = sigma_prog.max(dim=-1, keepdim=True).values
+    sigma_prog = sigma_prog.unsqueeze(-1)
     
     # Add noise from normal distribution N(0, σ_prog)
     noise = torch.randn_like(weight) * torch.sqrt(sigma_prog)
@@ -82,6 +87,32 @@ def pcm_mm_core(analog_x, analog_weight, config):
 
     return result
 
+def adc_simulation(
+    x: Tensor, width: int, is_signed: bool = True, scale_dimension: int = -1
+):
+    """
+    y_i = α·γ_i·quant_out(F_i(quant_in(x/α)))
+    """
+    x_max = x.abs().max(dim=scale_dimension, keepdim=True).values + 1e-9
+    
+    if is_signed:
+        int_min = -(2 ** (width - 1))
+        int_max = 2 ** (width - 1) - 1
+    else:
+        int_min = 0
+        int_max = 2**width - 1
+    
+    if is_signed:
+        scale = 2**(width - 1) / x_max
+    else:
+        scale = 2**width / x_max
+
+    data_int = my_clamp(my_round(x.mul(scale)), int_min, int_max)
+    data_q = data_int.div(scale)
+    data_scale = scale
+
+    return data_q, data_int, data_scale
+
 def pcm_tile(x, weight, config):
     """
     Implements noisy matrix multiplication for PCM-based computation.
@@ -104,19 +135,18 @@ def pcm_tile(x, weight, config):
     Returns:
         torch.Tensor: Result of noisy matrix multiplication
     """
-    quantile = config.get("quantile", 1.0)
     width = config.get("width", 8)
     is_signed = config.get("is_signed", True)
     gmax = config.get("gmax", 5)
     
-    x_quant, analog_x, scale_x = scale_integer_quantizer(x, width, is_signed, quantile)
-    weight_quant, analog_weight, scale_weight = scale_integer_quantizer(weight, width, is_signed, quantile)
+    x_quant, analog_x, scale_x = adc_simulation(x, width, is_signed, scale_dimension=-1)
+    weight_quant, analog_weight, scale_weight = adc_simulation(weight, width, is_signed, scale_dimension=-2)
 
     analog_weight = analog_weight.mul(gmax)
     scale_weight = scale_weight.mul(gmax)
     analog_out = pcm_mm_core(analog_x, analog_weight, config)
 
-    adc_out, _, _ = scale_integer_quantizer(analog_out, width, is_signed, quantile)
+    adc_out, _, _ = adc_simulation(analog_out, width, is_signed)
 
     result = adc_out.div(scale_x).div(scale_weight)
 

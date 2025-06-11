@@ -31,6 +31,7 @@ def get_module_type(module):
         return "batch_norm"
     else:
         return None
+
 def parse_q_config(module, q_config):
     if q_config.get("by") == "name":
         if module[0] in q_config:
