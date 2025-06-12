@@ -3,7 +3,7 @@ from torch import Tensor
 from .utils import my_clamp, my_round
 
 
-def programming_noise(weight):
+def programming_noise(weight, gmax):
     """
     Implements PCM programming noise model:
     g_prog = g_T + N(0, σ_prog)
@@ -16,21 +16,21 @@ def programming_noise(weight):
         torch.Tensor: Noisy weight values (g_prog)
     """
     # Calculate σ_prog using the quadratic equation
-    sigma_prog = -1.1731 * weight**2 + 1.9650 * weight + 0.2635
+    sigma_prog = -1.1731 * (weight/gmax)**2 + 1.9650 * (weight/gmax) + 0.2635
 
     # Ensure σ_prog is non-negative
-    sigma_prog_shape = sigma_prog.shape
-    sigma_prog = sigma_prog.reshape(*sigma_prog_shape[:-2], -1)
-    sigma_prog = sigma_prog.max(dim=-1, keepdim=True).values
-    sigma_prog = sigma_prog.unsqueeze(-1)
+    # sigma_prog_shape = sigma_prog.shape
+    # sigma_prog = sigma_prog.reshape(*sigma_prog_shape[:-2], -1)
+    # sigma_prog = sigma_prog.max(dim=-1, keepdim=True).values + 1e-9
+    # sigma_prog = sigma_prog.unsqueeze(-1)
     
     # Add noise from normal distribution N(0, σ_prog)
-    noise = torch.randn_like(weight) * torch.sqrt(sigma_prog)
+    noise = torch.randn_like(weight) * sigma_prog
     g_prog = weight + noise
     
     return g_prog
 
-def read_noise(analog_weight, analog_x, result):
+def get_read_noise(analog_weight, analog_x, result):
     """
     Implements short-term PCM read noise model:
     Calculate weight-dependent noise standard deviation
@@ -47,12 +47,28 @@ def read_noise(analog_weight, analog_x, result):
     
     # Calculate the weight-dependent term
     # Using absolute values of weights and squared inputs
-    noise_term = torch.sqrt((analog_x ** 2)@torch.abs(analog_weight))
+    noise_term = torch.sqrt((analog_x ** 2) @ torch.abs(analog_weight))
     
     # Generate noise with the calculated standard deviation
     noise = torch.randn_like(result) * sigma_0 * noise_term
     
-    return result + noise
+    return noise
+
+def get_ir_drop(analog_weight, analog_x, config):
+    """
+    Implements IR drop noise model:
+    Δy_i^IR-drop = 0.0001 * (Σ_j |w_ij| |x_j|^2)
+    """
+    gamma = 0.35 * 5 * 1e-6
+    n = analog_x.shape[-1]
+    a = gamma * n * ((analog_x.abs()) @ (analog_weight.abs()))
+    c = 0.05 * (a**3) - 0.2 *(a**2) + 0.5 * a
+    j = torch.arange(analog_x.shape[-1], device=analog_x.device)
+    ir_drop_scale = 1 - (1 - (j / n) ) ** 2
+
+    ir_drop = - c * (analog_x * ir_drop_scale @ analog_weight)
+
+    return ir_drop
 
 def pcm_mm_core(analog_x, analog_weight, config):
     """
@@ -79,37 +95,76 @@ def pcm_mm_core(analog_x, analog_weight, config):
     # First we need to transform it to real conductance
     # Assume the gmax is 5us(the result is from the original paper)
 
-    analog_weight = programming_noise(analog_weight)
+    analog_weight = programming_noise(analog_weight, config.get("gmax", 5))
     
     result = analog_x @ analog_weight
-        
-    result = read_noise(analog_weight, analog_x, result)
+
+    # ir_drop = get_ir_drop(analog_weight, analog_x, config)
+    ir_drop = 0
+
+    read_noise = get_read_noise(analog_weight, analog_x, result)
+
+    result = result + ir_drop + read_noise
 
     return result
 
-def adc_simulation(
-    x: Tensor, width: int, is_signed: bool = True, scale_dimension: int = -1
+def dac_simulation(
+    x: Tensor, width: int
 ):
     """
     y_i = α·γ_i·quant_out(F_i(quant_in(x/α)))
     """
-    x_max = x.abs().max(dim=scale_dimension, keepdim=True).values + 1e-9
+    x_shape = x.shape
+    x = x.reshape(*x_shape[:-2], -1)
+    x_max = x.abs().max(dim=-1, keepdim=True).values + 1e-9
     
-    if is_signed:
-        int_min = -(2 ** (width - 1))
-        int_max = 2 ** (width - 1) - 1
-    else:
-        int_min = 0
-        int_max = 2**width - 1
+    int_min = -(2 ** (width - 1))
+    int_max = 2 ** (width - 1) - 1
     
-    if is_signed:
-        scale = 2**(width - 1) / x_max
-    else:
-        scale = 2**width / x_max
+    scale = 2**(width - 1) / x_max
 
     data_int = my_clamp(my_round(x.mul(scale)), int_min, int_max)
     data_q = data_int.div(scale)
-    data_scale = scale
+
+    data_int = data_int / 2**(width - 1)
+    data_scale = scale / 2**(width - 1)
+
+    data_q = data_q.reshape(*x_shape)
+    data_int = data_int.reshape(*x_shape)
+    data_scale = data_scale.unsqueeze(-1)
+
+    return data_q, data_int, data_scale
+
+def adc_simulation(
+    x: Tensor, width: int = 8, output_bound: float = 10.0
+):
+    bounded_x = my_clamp(x, -output_bound, output_bound)
+
+    # support bias already
+    x_shape = x.shape
+    bounded_x_max = bounded_x.max(dim=-1, keepdim=True).values + 1e-9
+    bounded_x_min = bounded_x.min(dim=-1, keepdim=True).values + 1e-9
+
+    bias = (bounded_x_max + bounded_x_min) / 2
+
+    biased_x = bounded_x - bias
+    biased_x_max = biased_x.max(dim=-1, keepdim=True).values
+
+    int_min = -(2 ** (width - 1))
+    int_max = 2 ** (width - 1) - 1
+
+    
+    scale = 2**(width - 1) / biased_x_max
+
+    data_int = my_clamp(my_round(biased_x.mul(scale)), int_min, int_max)
+    data_q = data_int.div(scale) + bias
+
+    data_int = data_int / 2**(width - 1)
+    data_scale = scale / 2**(width - 1)
+
+    data_q = data_q.reshape(*x_shape)
+    data_int = data_int.reshape(*x_shape)
+    data_scale = data_scale.unsqueeze(-1)
 
     return data_q, data_int, data_scale
 
@@ -139,14 +194,15 @@ def pcm_tile(x, weight, config):
     is_signed = config.get("is_signed", True)
     gmax = config.get("gmax", 5)
     
-    x_quant, analog_x, scale_x = adc_simulation(x, width, is_signed, scale_dimension=-1)
-    weight_quant, analog_weight, scale_weight = adc_simulation(weight, width, is_signed, scale_dimension=-2)
+    x_quant, analog_x, scale_x = dac_simulation(x, width)
+    weight_quant, analog_weight, scale_weight = dac_simulation(weight, width)
 
     analog_weight = analog_weight.mul(gmax)
     scale_weight = scale_weight.mul(gmax)
     analog_out = pcm_mm_core(analog_x, analog_weight, config)
+    # analog_out = analog_x @ analog_weight
 
-    adc_out, _, _ = adc_simulation(analog_out, width, is_signed)
+    adc_out, _, _ = adc_simulation(analog_out, width=8, output_bound=10.0 * gmax)
 
     result = adc_out.div(scale_x).div(scale_weight)
 
