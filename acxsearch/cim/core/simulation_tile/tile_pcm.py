@@ -99,12 +99,17 @@ def pcm_mm_core(analog_x, analog_weight, config):
     
     result = analog_x @ analog_weight
 
-    # ir_drop = get_ir_drop(analog_weight, analog_x, config)
-    ir_drop = 0
 
     read_noise = get_read_noise(analog_weight, analog_x, result)
 
-    result = result + ir_drop + read_noise
+    ir_drop = get_ir_drop(analog_weight, analog_x, config)
+    # ir_drop = 0
+
+    out_noise = config.get("out_noise", 0.04)
+    # out_noise = 0.0
+
+
+    result = result + ir_drop + read_noise + out_noise * torch.randn_like(result)
 
     return result
 

@@ -28,6 +28,7 @@ TESTSET_LENGTH=10000
 #Hyperparmeters:
 device= 'cuda' if torch.cuda.is_available() else 'cpu'
 
+torch.manual_seed(0)
 
 def setup(rank, world_size):
     """Initialize the distributed environment."""

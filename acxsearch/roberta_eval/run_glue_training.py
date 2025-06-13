@@ -210,6 +210,14 @@ class ModelArguments:
             )
         },
     )
+    cim: bool = field(
+        default=False,
+        metadata={"help": "Whether to use CIM transformation."},
+    )
+    cim_config_path: str = field(
+        default=None,
+        metadata={"help": "Path to the CIM configuration file."},
+    )
     ignore_mismatched_sizes: bool = field(
         default=False,
         metadata={"help": "Will enable to load a pretrained model whose head dimensions are different."},
@@ -396,34 +404,17 @@ def main():
         trust_remote_code=model_args.trust_remote_code,
         ignore_mismatched_sizes=model_args.ignore_mismatched_sizes,
     )
-    # import sys
-    # from pathlib import Path
-    # sys.path.append(Path(__file__).resolve().parents[2].as_posix())
-    # from acxsearch.cim import vit_module_level_add_noise
-    # quan_config = {
-    #     "by": "type",
-    #     "conv2d": {
-    #         "config": {
-    #             "num_bits": 8,
-    #             "noise_magnitude": 0.2,
-    #         },
-    #     },
-    #     "linear": {
-    #         "config": {
-    #             "num_bits": 8,
-    #             "noise_magnitude": 0.2,
-    #         }
-    #     },
-    #     "relu": {
-    #         "config": {
-    #             "num_bits": 3,
-    #         }
-    #         },
-    # }
-
-    # # breakpoint()
-    # model = vit_module_level_add_noise(model, quan_config)
-
+    # ===========================================================
+    # =================== CIM Transformation ===================
+    # ===========================================================
+    from cim import module_level_transform
+    import yaml
+    if model_args.cim: 
+        q_config = yaml.load(open(model_args.cim_config_path, 'r'), Loader=yaml.FullLoader)
+        model = module_level_transform(model, q_config)
+    # ===========================================================
+    # =================== CIM Transformation ===================
+    # ===========================================================
     # Preprocessing the raw_datasets
     if data_args.task_name is not None:
         sentence1_key, sentence2_key = task_to_keys[data_args.task_name]
@@ -544,6 +535,16 @@ def main():
         if len(result) > 1:
             result["combined_score"] = np.mean(list(result.values())).item()
         return result
+
+    # ===========================================================
+    # =================== CIM Transformation ===================
+    # ===========================================================
+    if model_args.cim: 
+        q_config = yaml.load(open(model_args.cim_config_path, 'r'), Loader=yaml.FullLoader)
+        model = module_level_transform(model, q_config)
+    # ===========================================================
+    # =================== CIM Transformation ===================
+    # ===========================================================
 
     # Data collator will default to DataCollatorWithPadding when the tokenizer is passed to Trainer, so we change it if
     # we already did the padding.
