@@ -21,9 +21,14 @@ export PYTHONPATH="${PROJECT_HOME}/acxsearch/:$PYTHONPATH"
 cd ${PROJECT_HOME}
 pwd
 
+# eval_list=("sram" "pcm" "reram")
+# task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
-for eval_name in sram pcm reram; do
-    for task_name in cola mnli mrpc qnli qqp rte sst2 stsb; do
+eval_list=("original")
+task_list=(cola)
+
+for eval_name in ${eval_list[@]}; do
+    for task_name in ${task_list[@]}; do
         model_name=JeremiahZ/roberta-base-${task_name}
         CUDA_VISIBLE_DEVICES=$target_gpu python3 acxsearch/roberta_eval/run_gelu.py \
             --model_name_or_path ${model_name} \

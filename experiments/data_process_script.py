@@ -48,12 +48,13 @@ def save_organized_results(results, output_file="organized_results.json"):
 if __name__ == "__main__":
     # Load and organize results
     print("Loading results from .cache folder...")
-    result_path = "/home/cx922/AICrossSim/.cache/cim_digital/"
+    result_path = "/data/cx922/AICrossSim/roberta_eval/original/"
     results = load_results_from_cache(result_path)
     task_order = ["mnli", "qnli", "rte", "sst2", "mrpc", "cola", "qqp", "stsb"]
     rounded_results = {task: round(results[task], 4) for task in task_order}
     result_str = " & ".join([str(rounded_results[task]) for task in task_order])
+    print(task_order)
     print(result_str)
     rounded_results["overleaf_format"] = result_str
-    save_organized_results(rounded_results, result_path + "organized_results.json")
-    print("Detailed results with metadata saved to organized_results.json")
+    save_organized_results(rounded_results, result_path + "packed_results.json")
+    print("Detailed results with metadata saved to packed_results.json")

@@ -20,9 +20,9 @@ pwd
 
 
 eval_list=(reram)
-learning_rate_list=(1e-5 2e-5 3e-5)
-task_list=(cola)
-# task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
+learning_rate_list=(1e-5)
+# task_list=(cola)
+task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 # learning_rate_list=(1e-5)
 # task_list=(cola)
 # eval_list=("sram" "pcm" "reram")

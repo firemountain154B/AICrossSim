@@ -4,13 +4,13 @@ conv2d:
     tile_type: "digital"
     core_size: 16
     rescale_dim: "vector"
-    x_quant_type: "e5m2"
-    weight_quant_type: "e4m3"
+    x_quant_type: "e8m7"
+    weight_quant_type: "e8m7"
 
 linear:
   config:
     tile_type: "digital"
     core_size: 16
     rescale_dim: "vector"
-    x_quant_type: "e5m2"
-    weight_quant_type: "e4m3"
+    x_quant_type: "e8m7"
+    weight_quant_type: "e8m7"
