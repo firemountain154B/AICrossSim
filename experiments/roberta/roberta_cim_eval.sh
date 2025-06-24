@@ -2,9 +2,8 @@
 # eval_name="original"
 target_gpu=6
 
-
-DATA_HOME="/data/cx922"
-PROJECT_HOME="/home/jianyicheng/cx922/AICrossSim"
+DATA_HOME="${CX_DATA_HOME}"
+PROJECT_HOME="${CX_PROJECT_HOME}"
 
 DATASETS_PATH="${DATA_HOME}/datasets"
 MODELS_PATH="${DATA_HOME}/models" # for models not from huggingface
@@ -24,8 +23,8 @@ pwd
 # eval_list=("sram" "pcm" "reram")
 # task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
-eval_list=("original")
-task_list=(cola)
+eval_list=(sram)
+task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
 for eval_name in ${eval_list[@]}; do
     for task_name in ${task_list[@]}; do

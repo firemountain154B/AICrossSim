@@ -1,7 +1,7 @@
 #!/bin/bash
 
-DATA_HOME="/data/cx922"
-PROJECT_HOME="/home/jianyicheng/cx922/AICrossSim"
+DATA_HOME="${CX_DATA_HOME}"
+PROJECT_HOME="${CX_PROJECT_HOME}"
 
 DATASETS_PATH="${DATA_HOME}/datasets"
 MODELS_PATH="${DATA_HOME}/models" # for models not from huggingface

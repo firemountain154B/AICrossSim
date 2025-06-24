@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from .quantization import scale_integer_quantizer
 from ano.tools import get_logger
+from cim.utils import _get_similarity
 
 logger = get_logger(__name__)
 
@@ -24,8 +25,8 @@ def _runtime_rescale(
     #     raise ValueError(f"Invalid rescale_dim: {rescale_dim}")
     
     max_exponent = (torch.abs(x) + 1e-8).max(dim=-1, keepdim=True).values.log2().ceil()
-    exponent_min = 0
-    exponent_max = 2**exponent_bits - 1
+    exponent_min = -2**(exponent_bits - 1)
+    exponent_max = 2**(exponent_bits - 1) - 1
     max_exponent = torch.clamp(max_exponent, exponent_min, exponent_max)
 
     mantissa = x / 2**max_exponent
@@ -33,8 +34,7 @@ def _runtime_rescale(
     mantissa_min = -2**mantissa_bits
 
     # recast mantissa
-    mantissa = torch.clamp(mantissa * 2**mantissa_bits, mantissa_min, mantissa_max)
-    mantissa = mantissa.round()
+    mantissa = torch.clamp((mantissa * 2**mantissa_bits).round(), mantissa_min, mantissa_max)
     mantissa = mantissa / 2**mantissa_bits
 
     return mantissa * (2**max_exponent)
@@ -64,7 +64,6 @@ def sram_tile(x: Tensor, weight: Tensor, config: dict):
     
     x_quant_type = config.get("x_quant_type")
     weight_quant_type = config.get("weight_quant_type")
-    
 
     if x_quant_type == "e4m3":
         qx = _runtime_rescale(x, 4, 3, config.get("rescale_dim", "vector"))
@@ -80,6 +79,7 @@ def sram_tile(x: Tensor, weight: Tensor, config: dict):
         qx = x
 
     weight = weight.transpose(-1, -2) # the rescale dimension should be in the -2 dimension 
+
     if weight_quant_type == "e4m3":
         qweight = _runtime_rescale(weight, 4, 3, config.get("rescale_dim", "vector"))
     elif weight_quant_type == "e5m2":
@@ -96,9 +96,18 @@ def sram_tile(x: Tensor, weight: Tensor, config: dict):
     # similarity = _get_similarity(qx, x, metric="cosine")
 
     qweight = qweight.transpose(-1, -2) # permute back
+    
     if config.get("approximate_mode", False):
-        return approximate_mode(qx, qweight)
+        result = approximate_mode(qx, qweight)
     else:
-        return qx @ qweight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
+        result = qx @ qweight # Considering in the flow of the paper there is no cast while sending back to AHB, so no cast in the end
+    # result = result * x_max * weight_max
+    result = result
+    # similarity = _get_similarity(x@weight, result, 'L2_norm').mean()
+    # print(f"similarity: {similarity}")
+    # if similarity > 0.1:
+    #     breakpoint()
+
+    return result
 
     

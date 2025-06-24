@@ -15,7 +15,7 @@ set_logging_verbosity("debug")
 def mm_tile(x: Tensor, weight: Tensor, config: dict):
     return x @ weight
 
-def cim_tile(x, weight, config):
+def _cim_tile(x, weight, config):
     if config.get("tile_type") == "digital":
         return sram_tile(x, weight, config)
     elif config.get("tile_type") == "reram":
@@ -28,7 +28,7 @@ def cim_tile(x, weight, config):
         raise ValueError(f"Invalid tile type: {config.get('tile_type')}")
     
 
-def cim_mm(x: Tensor, weight: Tensor, config: dict):
+def cim_core(x: Tensor, weight: Tensor, config: dict):
     '''
     The digital mm is conducted in the following way:
     1. Reshape the x and weight to the vector-wise
@@ -91,12 +91,12 @@ def cim_mm(x: Tensor, weight: Tensor, config: dict):
 
     return out
 
-class CIMCore(torch.autograd.Function):
+class CIMTile(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, weight, config):
         ctx.save_for_backward(x, weight)
         ctx.config = config
-        return cim_mm(x, weight, config)
+        return _cim_tile(x, weight, config)
     
     @staticmethod
     def backward(ctx, grad_output):
@@ -105,6 +105,7 @@ class CIMCore(torch.autograd.Function):
         grad_weight = x.transpose(-2, -1) @ grad_output
         return grad_input, grad_weight, None
 
-def cim_core(x, weight, config):
-    return CIMCore.apply(x, weight, config)
+def cim_tile(x, weight, config):
+    return CIMTile.apply(x, weight, config)
+
 
