@@ -10,7 +10,7 @@ by: "type"
 linear:
   config:
     tile_type: "digital"
-    core_size: 16
+    core_size: 64
     rescale_dim: "vector"
     x_quant_type: "e4m3"
     weight_quant_type: "e4m3"

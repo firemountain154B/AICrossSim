@@ -48,7 +48,7 @@ def save_organized_results(results, output_file="organized_results.json"):
 if __name__ == "__main__":
     # Load and organize results
     print("Loading results from .cache folder...")
-    result_path = "/data/cx922/AICrossSim/roberta_eval/original/"
+    result_path = "/data/models/cx922/AICrossSim/roberta_eval/sram/"
     results = load_results_from_cache(result_path)
     task_order = ["mnli", "qnli", "rte", "sst2", "mrpc", "cola", "qqp", "stsb"]
     rounded_results = {task: round(results[task], 4) for task in task_order}

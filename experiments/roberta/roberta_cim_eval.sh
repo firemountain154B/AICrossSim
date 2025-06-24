@@ -23,7 +23,7 @@ pwd
 # eval_list=("sram" "pcm" "reram")
 # task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
-eval_list=(sram)
+eval_list=(reram)
 task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
 for eval_name in ${eval_list[@]}; do
