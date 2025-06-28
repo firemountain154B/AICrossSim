@@ -1,6 +1,6 @@
 
 # eval_name="original"
-target_gpu=6
+target_gpu=1
 
 DATA_HOME="${CX_DATA_HOME}"
 PROJECT_HOME="${CX_PROJECT_HOME}"
