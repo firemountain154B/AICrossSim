@@ -94,20 +94,28 @@ def pcm_mm_core(analog_x, analog_weight, config):
     # Notice the normalized weight here is just the normalized conductance
     # First we need to transform it to real conductance
     # Assume the gmax is 5us(the result is from the original paper)
-
-    analog_weight = programming_noise(analog_weight, config.get("gmax", 5))
+    if config.get("programming_noise", False):
+        analog_weight = programming_noise(analog_weight, config.get("gmax", 5))
+    else:
+        analog_weight = analog_weight
     
     result = analog_x @ analog_weight
 
+    if config.get("read_noise", False):
+        read_noise = get_read_noise(analog_weight, analog_x, result)
+    else:
+        read_noise = 0
 
-    read_noise = get_read_noise(analog_weight, analog_x, result)
+    if config.get("ir_drop", False):
+        ir_drop = get_ir_drop(analog_weight, analog_x, config)
+    else:
+        ir_drop = 0
 
-    ir_drop = get_ir_drop(analog_weight, analog_x, config)
-    # ir_drop = 0
 
-    out_noise = config.get("out_noise", 0.04)
-    # out_noise = 0.0
-
+    if config.get("out_noise", False):
+        out_noise = 0.04
+    else:
+        out_noise = 0
 
     result = result + ir_drop + read_noise + out_noise * torch.randn_like(result)
 
@@ -157,7 +165,6 @@ def adc_simulation(
 
     int_min = -(2 ** (width - 1))
     int_max = 2 ** (width - 1) - 1
-
     
     scale = 2**(width - 1) / biased_x_max
 
@@ -200,15 +207,23 @@ def pcm_tile(x, weight, config):
     gmax = config.get("gmax", 5)
     
     x_quant, analog_x, scale_x = dac_simulation(x, width)
-    weight_quant, analog_weight, scale_weight = dac_simulation(weight, width)
+    analog_weight, analog_weight_scale = weight_normalize(weight, gmax, config)
 
-    analog_weight = analog_weight.mul(gmax)
-    scale_weight = scale_weight.mul(gmax)
     analog_out = pcm_mm_core(analog_x, analog_weight, config)
     # analog_out = analog_x @ analog_weight
 
     adc_out, _, _ = adc_simulation(analog_out, width=8, output_bound=10.0 * gmax)
 
-    result = adc_out.div(scale_x).div(scale_weight)
+    result = adc_out.div(scale_x).div(analog_weight_scale)
 
     return result
+
+def weight_normalize(weight, gmax, config):
+    weight_shape = weight.shape
+    weight_array = weight.reshape(-1, config.get("core_size", 256)**2)
+    weight_max = weight_array.abs().max(dim=-1, keepdim=True).values + 1e-9
+    weight_scale = gmax / weight_max
+    analog_weight_array = weight_array * weight_scale
+    analog_weight = analog_weight_array.reshape(*weight_shape)
+    analog_weight_scale = weight_scale.reshape(*weight_shape[:-2], 1,1)
+    return analog_weight, analog_weight_scale
