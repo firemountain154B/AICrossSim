@@ -8,8 +8,6 @@ def load_results_from_cache(result_path):
     Returns a structured dictionary with results organized by method and task.
     """
     
-    
-    
     # Metric mapping for each task (based on GLUE benchmark standards)
     metric_mapping = {
         "mnli": "eval_accuracy",

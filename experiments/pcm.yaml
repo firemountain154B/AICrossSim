@@ -2,7 +2,7 @@ by: "type"
 conv2d:
   config:
     tile_type: "pcm"
-    core_size: 16
+    core_size: 64
     num_bits: 8
     programming_noise: true
     read_noise: true
@@ -10,7 +10,7 @@ conv2d:
 linear:
   config:
     tile_type: "pcm"
-    core_size: 16
+    core_size: 64
     num_bits: 8
     programming_noise: true
     read_noise: true
