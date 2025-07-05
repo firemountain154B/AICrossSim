@@ -19,22 +19,16 @@ cd ${PROJECT_HOME}
 pwd
 
 
-eval_list=(reram)
+eval_list=(pcm)
 learning_rate_list=(5e-6)
-# task_list=(mrpc)
-# task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
-task_list=(mnli)
-# task_list=(mrpc qnli qqp rte sst2 stsb)
-# learning_rate_list=(1e-5)
-# task_list=(cola)
-# eval_list=("sram" "pcm" "reram")
+task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
 
 for eval_name in ${eval_list[@]}; do
     for task_name in ${task_list[@]}; do
         for learning_rate in ${learning_rate_list[@]}; do
             model_name=JeremiahZ/roberta-base-${task_name}
-            CUDA_VISIBLE_DEVICES=1,2,3 \
-            python -u -m torch.distributed.launch --master_port=14400 --nproc_per_node=3 --nnodes=1 --node_rank=0 --use_env \
+            CUDA_VISIBLE_DEVICES=${CUDA_DEVICE} \
+            python -u -m torch.distributed.launch --master_port=14400 --nproc_per_node=${PROC_NUM} --nnodes=1 --node_rank=0 --use_env \
             acxsearch/roberta_eval/run_glue_training.py \
                 --model_name_or_path ${model_name} \
                 --cim True \
@@ -48,7 +42,7 @@ for eval_name in ${eval_list[@]}; do
                 --per_device_eval_batch_size 32 \
                 --num_train_epochs 5 \
                 --learning_rate ${learning_rate} \
-		--save_strategy "no" \
+		        --save_strategy "no" \
                 --seed 42
         done
     done
