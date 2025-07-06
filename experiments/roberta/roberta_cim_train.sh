@@ -20,8 +20,9 @@ pwd
 
 
 eval_list=(pcm)
-learning_rate_list=(5e-6)
-task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
+learning_rate_list=(1e-6 5e-6 1e-5 2e-5)
+# task_list=(cola mnli mrpc qnli qqp rte sst2 stsb)
+task_list=(mrpc)
 
 for eval_name in ${eval_list[@]}; do
     for task_name in ${task_list[@]}; do
@@ -40,7 +41,7 @@ for eval_name in ${eval_list[@]}; do
                 --do_eval \
                 --per_device_train_batch_size 4 \
                 --per_device_eval_batch_size 32 \
-                --num_train_epochs 5 \
+                --num_train_epochs 10 \
                 --learning_rate ${learning_rate} \
 		        --save_strategy "no" \
                 --seed 42

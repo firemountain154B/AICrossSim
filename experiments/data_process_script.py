@@ -46,7 +46,13 @@ def save_organized_results(results, output_file="organized_results.json"):
 if __name__ == "__main__":
     # Load and organize results
     print("Loading results from .cache folder...")
-    result_path = "/data/models/cx922/AICrossSim/roberta_eval/reram/"
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--result_path', type=str, required=True, help='Path to the results directory')
+    args = parser.parse_args()
+    
+    result_path = args.result_path
+
     results = load_results_from_cache(result_path)
     task_order = ["mnli", "qnli", "rte", "sst2", "mrpc", "cola", "qqp", "stsb"]
     rounded_results = {task: round(results[task], 4) for task in task_order}
